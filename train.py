@@ -29,7 +29,7 @@ from jax import config
 from jax import random
 import jax.numpy as jnp
 import numpy as np
-import tensorflow_addons as tfa
+#import tensorflow_addons as tfa
 
 from jaxnerf.nerf import datasets
 from jaxnerf.nerf import models
@@ -136,7 +136,7 @@ def main(unused_argv):
 
   # GUS CODE
   optimizer = flax.optim.Adam(FLAGS.lr_init).create(variables)
-  optimizer = tfa.optimizers.Lookahead(optimizer)
+  #optimizer = tfa.optimizers.Lookahead(optimizer)
 
   state = utils.TrainState(optimizer=optimizer)
   del optimizer, variables
