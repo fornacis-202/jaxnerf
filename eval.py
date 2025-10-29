@@ -73,13 +73,12 @@ def main(unused_argv):
   rng, key = random.split(rng)
   model, init_variables = models.get_model(key, dataset.peek(), FLAGS)
   
-  # GUS CODE:
-  optimizer = flax.optim.Adam(FLAGS.lr_init).create(init_variables)
-  optimizer = optax.lookahead(optimizer, )
-  #optimizer = tfa.optimizers.Lookahead(optimizer)
+  tx = optax.adam(FLAGS.lr_init)
   
-  state = utils.TrainState(optimizer=optimizer)
-  del optimizer, init_variables
+  state = utils.TrainState.create(apply_fn=model.apply,
+                                  params=init_variables['params'],
+                                  tx=tx)
+  del init_variables
 
   lpips_model = tf_hub.load(LPIPS_TFHUB_PATH)
 
@@ -123,7 +122,7 @@ def main(unused_argv):
       print(f"Evaluating {idx+1}/{dataset.size}")
       batch = next(dataset)
       pred_color, pred_disp, pred_acc = utils.render_image(
-          functools.partial(render_pfn, state.optimizer.target),
+          functools.partial(render_pfn, state.params),
           batch["rays"],
           rng,
           FLAGS.dataset == "llff",
