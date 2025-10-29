@@ -202,7 +202,7 @@ def main(unused_argv):
   init_step = state.step + 1  # <-- CHANGED (New TrainState tracks step)
   state = flax.jax_utils.replicate(state)
 
-  if jax.process_index() == 0::
+  if jax.process_index() == 0:
     summary_writer = tensorboard.SummaryWriter(FLAGS.train_dir)
 
   # Prefetch_buffer_size = 3 x batch_size
