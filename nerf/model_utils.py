@@ -51,9 +51,9 @@ class MLP(nn.Module):
 
     Returns:
       raw_rgb: jnp.ndarray(float32), with a shape of
-           [batch, num_samples, num_rgb_channels].
+        [batch, num_samples, num_rgb_channels].
       raw_sigma: jnp.ndarray(float32), with a shape of
-           [batch, num_samples, num_sigma_channels].
+        [batch, num_samples, num_sigma_channels].
     """
     feature_dim = x.shape[-1]
     num_samples = x.shape[1]
@@ -182,7 +182,7 @@ def volumetric_rendering(rgb, sigma, z_vals, dirs, white_bkgd):
   eps = 1e-10
   dists = jnp.concatenate([
       z_vals[Ellipsis, 1:] - z_vals[Ellipsis, :-1],
-      jnp.broadcast_to([1e10], z_vals[Ellipsis, :1].shape)
+      jnp.broadcast_to(1e10, z_vals[Ellipsis, :1].shape)  # <-- *** THE FIX IS HERE ***
   ], -1)
   dists = dists * jnp.linalg.norm(dirs[Ellipsis, None, :], axis=-1)
   # Note that we're quietly turning sigma from [..., 0] to [...].
@@ -191,7 +191,7 @@ def volumetric_rendering(rgb, sigma, z_vals, dirs, white_bkgd):
       jnp.ones_like(alpha[Ellipsis, :1], alpha.dtype),
       jnp.cumprod(1.0 - alpha[Ellipsis, :-1] + eps, axis=-1)
   ],
-                               axis=-1)
+                              axis=-1)
   weights = alpha * accum_prod
 
   comp_rgb = (weights[Ellipsis, None] * rgb).sum(axis=-2)
