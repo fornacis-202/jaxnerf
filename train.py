@@ -22,6 +22,7 @@ import time
 from absl import app
 from absl import flags
 import flax
+import optax
 from flax.metrics import tensorboard
 from flax.training import checkpoints
 import jax
@@ -41,7 +42,8 @@ utils.define_flags()
 config.parse_flags_with_absl()
 
 
-def train_step(model, rng, state, batch, lr):
+# def train_step(model, rng, state, batch, lr):  # <-- CHANGED (Original)
+def train_step(model, rng, state, batch):  # <-- CHANGED (lr argument removed)
   """One optimization step.
 
   Args:
@@ -49,7 +51,7 @@ def train_step(model, rng, state, batch, lr):
     rng: jnp.ndarray, random number generator.
     state: utils.TrainState, state of the model/optimizer.
     batch: dict, a mini-batch of data for training.
-    lr: float, real-time learning rate.
+    # lr: float, real-time learning rate.  # <-- CHANGED (commented out)
 
   Returns:
     new_state: utils.TrainState, new training state.
@@ -91,8 +93,10 @@ def train_step(model, rng, state, batch, lr):
         loss=loss, psnr=psnr, loss_c=loss_c, psnr_c=psnr_c, weight_l2=weight_l2)
     return loss + loss_c + FLAGS.weight_decay_mult * weight_l2, stats
 
-  (_, stats), grad = (
-      jax.value_and_grad(loss_fn, has_aux=True)(state.optimizer.target))
+  # (_, stats), grad = (  # <-- CHANGED (Original)
+  #     jax.value_and_grad(loss_fn, has_aux=True)(state.optimizer.target))
+  (_, stats), grad = (  # <-- CHANGED (use state.params)
+      jax.value_and_grad(loss_fn, has_aux=True)(state.params))
   grad = jax.lax.pmean(grad, axis_name="batch")
   stats = jax.lax.pmean(stats, axis_name="batch")
 
@@ -109,8 +113,10 @@ def train_step(model, rng, state, batch, lr):
     mult = jnp.minimum(1, FLAGS.grad_max_norm / (1e-7 + grad_norm))
     grad = jax.tree_util.tree_map(lambda z: mult * z, grad)
 
-  new_optimizer = state.optimizer.apply_gradient(grad, learning_rate=lr)
-  new_state = state.replace(optimizer=new_optimizer)
+  # new_optimizer = state.optimizer.apply_gradient(grad, learning_rate=lr)  # <-- CHANGED (Original)
+  # new_state = state.replace(optimizer=new_optimizer)  # <-- CHANGED (Original)
+  new_state = state.apply_gradients(grads=grad)  # <-- CHANGED (New API)
+  
   return new_state, stats, rng
 
 
@@ -134,13 +140,8 @@ def main(unused_argv):
   rng, key = random.split(rng)
   model, variables = models.get_model(key, dataset.peek(), FLAGS)
 
-  # GUS CODE
-  optimizer = flax.optim.Adam(FLAGS.lr_init).create(variables)
-  #optimizer = tfa.optimizers.Lookahead(optimizer)
-
-  state = utils.TrainState(optimizer=optimizer)
-  del optimizer, variables
-
+  # --- MOVED AND CHANGED ---
+  # This block is moved from below to be available for the optimizer.
   learning_rate_fn = functools.partial(
       utils.learning_rate_decay,
       lr_init=FLAGS.lr_init,
@@ -148,11 +149,33 @@ def main(unused_argv):
       max_steps=FLAGS.max_steps,
       lr_delay_steps=FLAGS.lr_delay_steps,
       lr_delay_mult=FLAGS.lr_delay_mult)
+  
+  # --- CHANGED BLOCK ---
+  # (Original block commented out below)
+  # optimizer = flax.optim.Adam(FLAGS.lr_init).create(variables)
+  # state = utils.TrainState(optimizer=optimizer)
+  # del optimizer, variables
+
+  # Create the optimizer definition using the schedule
+  optimizer_def = optax.adam(learning_rate=learning_rate_fn)
+
+  # Create the TrainState
+  state = utils.TrainState.create(
+      apply_fn=model.apply,
+      params=variables,
+      tx=optimizer_def)
+  del optimizer_def, variables
+  # --- END CHANGED BLOCK ---
+
+  # --- DELETED BLOCK ---
+  # The learning_rate_fn definition was here, but we moved it above.
+  # ---
 
   train_pstep = jax.pmap(
       functools.partial(train_step, model),
       axis_name="batch",
-      in_axes=(0, 0, 0, None),
+      # in_axes=(0, 0, 0, None),  # <-- CHANGED (Original)
+      in_axes=(0, 0, 0),  # <-- CHANGED (lr argument removed)
       donate_argnums=(2,))
 
   def render_fn(variables, key_0, key_1, rays):
@@ -175,7 +198,8 @@ def main(unused_argv):
     utils.makedirs(FLAGS.train_dir)
   state = checkpoints.restore_checkpoint(FLAGS.train_dir, state)
   # Resume training a the step of the last checkpoint.
-  init_step = state.optimizer.state.step + 1
+  # init_step = state.optimizer.state.step + 1  # <-- CHANGED (Original)
+  init_step = state.step + 1  # <-- CHANGED (New TrainState tracks step)
   state = flax.jax_utils.replicate(state)
 
   if jax.host_id() == 0:
@@ -193,8 +217,13 @@ def main(unused_argv):
     if reset_timer:
       t_loop_start = time.time()
       reset_timer = False
+    
+    # lr is still calculated here, but ONLY for logging. It's not passed to train_step.
     lr = learning_rate_fn(step)
-    state, stats, keys = train_pstep(keys, state, batch, lr)
+    
+    # state, stats, keys = train_pstep(keys, state, batch, lr) # <-- CHANGED (Original)
+    state, stats, keys = train_pstep(keys, state, batch)  # <-- CHANGED
+    
     if jax.host_id() == 0:
       stats_trace.append(stats)
     if step % FLAGS.gc_every == 0:
@@ -239,7 +268,8 @@ def main(unused_argv):
       # training.
       t_eval_start = time.time()
       eval_variables = jax.device_get(jax.tree_map(lambda x: x[0],
-                                                   state)).optimizer.target
+                                                    # state)).optimizer.target  # <-- CHANGED (Original)
+                                                    state)).params  # <-- CHANGED
       test_case = next(test_dataset)
       pred_color, pred_disp, pred_acc = utils.render_image(
           functools.partial(render_pfn, eval_variables),
