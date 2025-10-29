@@ -15,7 +15,7 @@
 #!/bin/bash
 CONFIG=$1
 DATA_ROOT=$2
-ROOT_DIR=/tmp/jaxnerf/"$CONFIG"
+ROOT_DIR=/res/jaxnerf/"$CONFIG"
 if [ $CONFIG == "llff" ]
 then
   SCENES="room fern leaves fortress orchids flower trex horns"
