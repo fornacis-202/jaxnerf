@@ -124,7 +124,7 @@ def main(unused_argv):
   rng = random.PRNGKey(20200823)
   # Shift the numpy random seed by host_id() to shuffle data loaded by different
   # hosts.
-  np.random.seed(20201473 + jax.host_id())
+  np.random.seed(20201473 + jax.process_index())
 
   if FLAGS.config is not None:
     utils.update_flags(FLAGS)
@@ -202,13 +202,13 @@ def main(unused_argv):
   init_step = state.step + 1  # <-- CHANGED (New TrainState tracks step)
   state = flax.jax_utils.replicate(state)
 
-  if jax.host_id() == 0:
+  if jax.process_index() == 0::
     summary_writer = tensorboard.SummaryWriter(FLAGS.train_dir)
 
   # Prefetch_buffer_size = 3 x batch_size
   pdataset = flax.jax_utils.prefetch_to_device(dataset, 3)
   n_local_devices = jax.local_device_count()
-  rng = rng + jax.host_id()  # Make random seed separate across hosts.
+  rng = rng + jax.process_index()
   keys = random.split(rng, n_local_devices)  # For pmapping RNG keys.
   gc.disable()  # Disable automatic garbage collection for efficiency.
   stats_trace = []
@@ -224,7 +224,7 @@ def main(unused_argv):
     # state, stats, keys = train_pstep(keys, state, batch, lr) # <-- CHANGED (Original)
     state, stats, keys = train_pstep(keys, state, batch)  # <-- CHANGED
     
-    if jax.host_id() == 0:
+    if jax.process_index() == 0:
       stats_trace.append(stats)
     if step % FLAGS.gc_every == 0:
       gc.collect()
@@ -257,7 +257,7 @@ def main(unused_argv):
               f"weight_l2={stats.weight_l2[0]:0.2e}, " + f"lr={lr:0.2e}, " +
               f"{rays_per_sec:0.0f} rays/sec")
       if step % FLAGS.save_every == 0:
-        state_to_save = jax.device_get(jax.tree_map(lambda x: x[0], state))
+        state_to_save = jax.device_get(jax.tree_util.tree_map(lambda x: x[0], state))
         checkpoints.save_checkpoint(
             FLAGS.train_dir, state_to_save, int(step), keep=100)
 
@@ -267,7 +267,7 @@ def main(unused_argv):
       # here on purpose so that the visualization matches what happened in
       # training.
       t_eval_start = time.time()
-      eval_variables = jax.device_get(jax.tree_map(lambda x: x[0],
+      eval_variables = jax.device_get(jax.tree_util.tree_map(lambda x: x[0],
                                                     # state)).optimizer.target  # <-- CHANGED (Original)
                                                     state)).params  # <-- CHANGED
       test_case = next(test_dataset)
@@ -279,7 +279,7 @@ def main(unused_argv):
           chunk=FLAGS.chunk)
 
       # Log eval summaries on host 0.
-      if jax.host_id() == 0:
+      if jax.process_index() == 0:
         psnr = utils.compute_psnr(
             ((pred_color - test_case["pixels"])**2).mean())
         ssim = ssim_fn(pred_color, test_case["pixels"])
@@ -296,7 +296,7 @@ def main(unused_argv):
         summary_writer.image("test_target", test_case["pixels"], step)
 
   if FLAGS.max_steps % FLAGS.save_every != 0:
-    state = jax.device_get(jax.tree_map(lambda x: x[0], state))
+    state = jax.device_get(jax.tree_util.tree_map(lambda x: x[0], state))
     checkpoints.save_checkpoint(
         FLAGS.train_dir, state, int(FLAGS.max_steps), keep=100)
 
