@@ -21,6 +21,7 @@ from os import path
 from absl import flags
 import flax
 import jax
+from flax.training import train_state
 import jax.numpy as jnp
 import jax.scipy as jsp
 import numpy as np
@@ -33,8 +34,8 @@ INTERNAL = False
 
 
 @flax.struct.dataclass
-class TrainState:
-  optimizer: flax.optim.Optimizer
+class TrainState(train_state.TrainState):  # <-- 2. ADD INHERITANCE
+  pass  # <-- 3. REPLACE 'optimizer: ...' with 'pass'
 
 
 @flax.struct.dataclass
