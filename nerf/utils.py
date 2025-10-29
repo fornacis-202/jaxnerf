@@ -388,7 +388,8 @@ def shard(xs):
 
 def to_device(xs):
   """Transfer data to devices (GPU/TPU)."""
-  return jax.tree_map(jnp.array, xs)
+  return jax.tree_util.tree_map(jnp.array, xs)
+
 
 
 def unshard(x, padding=0):
