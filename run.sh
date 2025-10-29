@@ -22,7 +22,7 @@ source ./bin/activate
 pip install -r jaxnerf/requirements.txt
 python -m jaxnerf.train \
   --data_dir=jaxnerf/example_data \
-  --train_dir=/tmp/jaxnerf_test \
+  --train_dir=/res/jaxnerf_test \
   --max_steps=5 \
   --factor=2 \
   --batch_size=512
