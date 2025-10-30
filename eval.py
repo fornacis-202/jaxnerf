@@ -47,7 +47,8 @@ LPIPS_TFHUB_PATH = "@neural-rendering/lpips/distance/1"
 
 
 import torch
-import lpips
+import lpips as lpips_torch
+
 
 def compute_lpips(image1, image2, model):
   """
@@ -95,7 +96,7 @@ def main(unused_argv):
   del init_variables
 
   print("Loading LPIPS (VGG) from PyTorch...")
-  lpips_model = lpips.LPIPS(net='vgg').cpu()
+  lpips_model = lpips_torch.LPIPS(net='vgg').cpu()
   lpips_model.eval()
 
   # Rendering is forced to be deterministic even if training was randomized, as
