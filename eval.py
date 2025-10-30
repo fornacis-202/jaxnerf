@@ -46,12 +46,26 @@ utils.define_flags()
 LPIPS_TFHUB_PATH = "@neural-rendering/lpips/distance/1"
 
 
+import torch
+import lpips
+
 def compute_lpips(image1, image2, model):
-  """Compute the LPIPS metric."""
-  # The LPIPS model expects a batch dimension.
-  return model(
-      tf.convert_to_tensor(image1[None, Ellipsis]),
-      tf.convert_to_tensor(image2[None, Ellipsis]))[0]
+  """
+  Compute the LPIPS metric using PyTorch implementation.
+  Expects HxWxC images in [0,1].
+  """
+  # Ensure numpy float32 arrays
+  image1 = np.asarray(image1, dtype=np.float32)
+  image2 = np.asarray(image2, dtype=np.float32)
+
+
+  # Convert to torch tensors, shape (1,3,H,W), range [-1,1]
+  t1 = torch.from_numpy(image1).permute(2, 0, 1).unsqueeze(0) * 2 - 1
+  t2 = torch.from_numpy(image2).permute(2, 0, 1).unsqueeze(0) * 2 - 1
+
+  with torch.no_grad():
+    dist = model(t1, t2).item()
+  return float(dist)
 
 
 def main(unused_argv):
@@ -80,7 +94,9 @@ def main(unused_argv):
                                   tx=tx)
   del init_variables
 
-  lpips_model = tf_hub.load(LPIPS_TFHUB_PATH)
+  print("Loading LPIPS (VGG) from PyTorch...")
+  lpips_model = lpips.LPIPS(net='vgg').cpu()
+  lpips_model.eval()
 
   # Rendering is forced to be deterministic even if training was randomized, as
   # this eliminates "speckle" artifacts.
