@@ -361,24 +361,46 @@ def save_img(img, pth):
 
 # In file: nerf/utils.py
 
+import jax.numpy as jnp
+
 def learning_rate_decay(step,
                         lr_init,
                         lr_final,
                         max_steps,
                         lr_delay_steps=0,
-                        lr_delay_mult=1):
-  """Continuous learning rate decay function.
-  ...
+                        lr_delay_mult=1.0):
+  """Exponential LR decay with optional warmup delay, compatible with JaxNeRF.
+
+  Matches behavior of:
+      decay_rate = (final_lr / initial_lr) ** (1 / total_steps)
+      lr = initial_lr * (decay_rate ** step)
+
+  Args:
+    step: current training step (scalar or array).
+    lr_init: initial learning rate.
+    lr_final: final learning rate at max_steps.
+    max_steps: total training steps for full decay.
+    lr_delay_steps: number of warmup (delay) steps.
+    lr_delay_mult: multiplier at step=0 during warmup (1.0 = no warmup).
+
+  Returns:
+    Scalar learning rate at given step.
   """
+
+  # --- Optional warmup (cosine delay) ---
   if lr_delay_steps > 0:
-    # A kind of reverse cosine decay.
-    delay_rate = lr_delay_mult + (1 - lr_delay_mult) * jnp.sin(  # <-- CHANGED
-        0.5 * jnp.pi * jnp.clip(step / lr_delay_steps, 0, 1))  # <-- CHANGED
+    delay_rate = lr_delay_mult + (1.0 - lr_delay_mult) * jnp.sin(
+        0.5 * jnp.pi * jnp.clip(step / lr_delay_steps, 0.0, 1.0)
+    )
   else:
-    delay_rate = 1.
-  t = jnp.clip(step / max_steps, 0, 1)  # <-- CHANGED
-  log_lerp = jnp.exp(jnp.log(lr_init) * (1 - t) + jnp.log(lr_final) * t)  # <-- CHANGED
-  return delay_rate * log_lerp
+    delay_rate = 1.0
+
+  # --- Exponential decay ---
+  decay_rate = (lr_final / lr_init) ** (1.0 / max_steps)
+  lr = lr_init * (decay_rate ** step)
+
+  return lr * delay_rate
+
 
 def shard(xs):
   """Split data recursively into shards for pmap."""
