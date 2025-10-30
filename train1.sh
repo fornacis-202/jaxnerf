@@ -37,5 +37,5 @@ echo "Train dir: $ROOT_DIR/$CONFIG/$SCENE"
 # Run a single training job for the given scene
 python -m jaxnerf.train \
   --data_dir="$DATA_ROOT"/"$DATA_FOLDER"/"$SCENE" \
-  --train_dir="$ROOT_DIR"/"$CONFIG"/"$SCENE" \
+  --train_dir="$ROOT_DIR"/"$SCENE" \
   --config=configs/"$CONFIG"
