@@ -38,4 +38,4 @@ echo "Train dir: $ROOT_DIR/$CONFIG/$SCENE"
 python -m jaxnerf.train \
   --data_dir="$DATA_ROOT"/"$DATA_FOLDER"/"$SCENE" \
   --train_dir="$ROOT_DIR"/"$CONFIG"/"$SCENE" \
-  --config=configs/"$CONFIG".yaml
+  --config=configs/"$CONFIG"
