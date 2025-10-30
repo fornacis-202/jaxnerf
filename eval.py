@@ -84,7 +84,7 @@ def main(unused_argv):
   tx = optax.adam(FLAGS.lr_init)
   state = utils.TrainState.create(
       apply_fn=model.apply,
-      params=init_variables["params"],
+      params=init_variables,
       tx=tx,
   )
   del init_variables
