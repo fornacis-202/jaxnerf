@@ -162,7 +162,7 @@ def main(unused_argv):
   # Create the TrainState
   state = utils.TrainState.create(
       apply_fn=model.apply,
-      params=variables,
+      params=variables["params"],
       tx=optimizer_def)
   del optimizer_def, variables
   # --- END CHANGED BLOCK ---
