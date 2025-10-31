@@ -23,11 +23,11 @@ SCENE=$3
 ROOT_DIR=/kaggle/working/res/jaxnerf/"$CONFIG"
 
 # Determine dataset folder based on config
-if [ "$CONFIG" == "llff" ]; then
-  DATA_FOLDER="nerf_llff_data"
-else
-  DATA_FOLDER="nerf_synthetic"
-fi
+
+DATA_FOLDER="nerf_llff_data"
+
+# DATA_FOLDER="nerf_synthetic"
+
 
 echo "==============================================="
 echo "Running evaluation for CONFIG: $CONFIG"
