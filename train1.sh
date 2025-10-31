@@ -24,15 +24,15 @@ SCENE=$3
 ROOT_DIR=/kaggle/working/res/jaxnerf/"$CONFIG"
 
 # Determine which dataset folder to use
-if [ "$CONFIG" == "llff" ]; then
-  DATA_FOLDER="nerf_llff_data"
-else
-  DATA_FOLDER="nerf_synthetic"
-fi
+
+DATA_FOLDER="nerf_llff_data"
+
+# DATA_FOLDER="nerf_synthetic"
+
 
 echo "Running training for config: $CONFIG, scene: $SCENE"
 echo "Data dir: $DATA_ROOT/$DATA_FOLDER/$SCENE"
-echo "Train dir: $ROOT_DIR/$CONFIG/$SCENE"
+echo "Train dir: $ROOT_DIR/$SCENE"
 
 # Run a single training job for the given scene
 python -m jaxnerf.train \
