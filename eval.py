@@ -17,6 +17,7 @@
 """Evaluation script for Nerf."""
 import functools
 from os import path
+import os
 
 from absl import app
 from absl import flags
@@ -30,6 +31,7 @@ import tensorflow as tf
 import optax
 import torch
 import lpips as lpips_torch
+import matplotlib.pyplot as plt
 
 from jaxnerf.nerf import datasets
 from jaxnerf.nerf import models
@@ -159,6 +161,21 @@ def main(unused_argv):
         psnr_values.append(float(psnr))
         ssim_values.append(float(ssim))
         lpips_values.append(float(lpips_val))
+
+        # --- NEW: save per-image MSE heatmap if requested ---
+        if FLAGS.save_output:
+          try:
+            # Convert to numpy arrays in case they're JAX arrays
+            pc = np.asarray(pred_color)
+            gt = np.asarray(batch["pixels"])
+            # per-pixel MSE across color channels
+            heatmap = np.mean((pc - gt) ** 2, axis=-1)
+            heatmap_path = path.join(out_dir, f"{idx:03d}_heatmap.png")
+            # Use inferno colormap to visualize error intensity
+            plt.imsave(heatmap_path, heatmap, cmap='inferno')
+          except Exception as e:
+            # Don't fail evaluation for a heatmap save error; print warning.
+            print(f"Warning: failed to save heatmap for idx {idx}: {e}")
 
       if FLAGS.save_output:
         utils.save_img(pred_color, path.join(out_dir, f"{idx:03d}.png"))
