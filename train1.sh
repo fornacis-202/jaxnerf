@@ -25,9 +25,9 @@ ROOT_DIR=/kaggle/working/res/jaxnerf/"$CONFIG"
 
 # Determine which dataset folder to use
 
-DATA_FOLDER="nerf_llff_data"
+# DATA_FOLDER="nerf_llff_data"
 
-# DATA_FOLDER="nerf_synthetic"
+DATA_FOLDER="nerf_synthetic"
 
 
 echo "Running training for config: $CONFIG, scene: $SCENE"
