@@ -6,3 +6,5 @@ num_fine_samples: 128
 use_viewdirs: true
 white_bkgd: false
 batch_size: 4096
+randomized: true
+max_steps: 300000
