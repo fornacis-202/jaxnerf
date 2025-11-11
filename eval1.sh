@@ -24,9 +24,9 @@ ROOT_DIR=/kaggle/working/res/jaxnerf/"$CONFIG"
 
 # Determine dataset folder based on config
 
-# DATA_FOLDER="nerf_llff_data"
+DATA_FOLDER="nerf_llff_data"
 
-DATA_FOLDER="nerf_synthetic"
+# DATA_FOLDER="nerf_synthetic"
 
 
 echo "==============================================="
